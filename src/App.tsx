@@ -202,7 +202,7 @@ function App() {
             Full-stack developer crafting exceptional digital experiences
             through clean code and innovative design
           </p>
-          <div className="flex gap-6 justify-center">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 justify-center">
             <SocialLink
               theme={theme}
               href="https://github.com/aaqeebh1"
@@ -528,7 +528,7 @@ function SocialLink({
       href={href}
       // Only use target="_blank" for non-email links
       {...(!isEmail ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className={`group flex items-center gap-2 px-6 py-3 rounded-full transition-all hover:scale-105 ${
+      className={`group flex items-center gap-2 px-6 py-3 rounded-full transition-all hover:scale-105 w-[150px] mx-auto ${
         theme === "dark"
           ? "bg-white/10 hover:bg-emerald-500"
           : "bg-gray-200 hover:bg-emerald-500 text-gray-800 hover:text-white"
