@@ -8,8 +8,6 @@ import {
   Palette,
   Globe,
   Terminal,
-  ChevronUp,
-  ChevronDown,
   X,
   Sun,
   Moon,
@@ -18,7 +16,6 @@ import supabase from "../config/supabaseClient";
 
 function App() {
   const [scrolled, setScrolled] = useState(false);
-  const [activeProject, setActiveProject] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [theme, setTheme] = useState("dark");
   const [projectsData, setProjectsData] = useState<any[]>([]);
@@ -40,13 +37,6 @@ function App() {
 
     fetchProjects();
   }, []);
-
-  useEffect(() => {
-    // Reset activeProject if it's out of bounds after data loads
-    if (projectsData.length > 0 && activeProject >= projectsData.length) {
-      setActiveProject(0);
-    }
-  }, [projectsData, activeProject]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -73,28 +63,32 @@ function App() {
     localStorage.setItem("theme", newTheme);
   };
 
-  const nextProject = () => {
-    if (projectsData.length === 0) return;
-    setActiveProject((prev) => (prev + 1) % projectsData.length);
-  };
-
-  const prevProject = () => {
-    if (projectsData.length === 0) return;
-    setActiveProject(
-      (prev) => (prev - 1 + projectsData.length) % projectsData.length
-    );
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Form submitted:", formData);
-    setIsModalOpen(false);
-    setFormData({ name: "", email: "", message: "" });
+
+    const { error } = await supabase.functions.invoke(
+      "send-contact-email",
+      {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+        },
+      },
+    );
+
+    if (error) {
+      console.error("Error:", error);
+      alert("Failed to send message. Please try again.");
+    } else {
+      alert("Message sent successfully!");
+      setIsModalOpen(false);
+      setFormData({ name: "", email: "", message: "" });
+    }
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -275,47 +269,36 @@ function App() {
           </h2>
 
           {projectsData.length > 0 ? (
-            <div className="relative max-w-5xl mx-auto">
-              <button
-                onClick={prevProject}
-                className={`w-full p-2 mb-4 rounded-lg transition-colors ${
-                  theme === "dark"
-                    ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
-                    : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
-                }`}
-                aria-label="Previous project"
-              >
-                <ChevronUp size={24} className="mx-auto" />
-              </button>
-
-              <div
-                className={`relative flex flex-col md:flex-row gap-8 rounded-2xl p-8 ${
-                  theme === "dark" ? "bg-white/5" : "bg-emerald-50/50"
-                }`}
-              >
-                <div className="md:w-1/2 relative aspect-[16/9] overflow-hidden rounded-xl">
-                  <img
-                    src={projectsData[activeProject].image}
-                    alt={projectsData[activeProject].title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                </div>
-                <div className="md:w-1/2 flex flex-col justify-center">
-                  <h3 className="text-3xl font-bold mb-4">
-                    {projectsData[activeProject].title}
-                  </h3>
-                  <p
-                    className={`mb-6 ${
-                      theme === "dark" ? "text-gray-400" : "text-gray-600"
-                    }`}
-                  >
-                    {projectsData[activeProject].description}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {projectsData[activeProject].technologies?.map(
-                      (tag: string, index: number) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {projectsData.map((project: any, index: number) => (
+                <div
+                  key={project.id ?? index}
+                  className={`group rounded-2xl overflow-hidden transition-all hover:scale-[1.02] ${
+                    theme === "dark"
+                      ? "bg-white/5 border border-white/10"
+                      : "bg-emerald-50/50 border border-emerald-100"
+                  }`}
+                >
+                  <div className="relative aspect-[16/9] overflow-hidden">
+                    <img
+                      src={project.image}
+                      alt={project.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-2xl font-bold mb-3">{project.title}</h3>
+                    <p
+                      className={`mb-6 ${
+                        theme === "dark" ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      {project.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {project.technologies?.map((tag: string, i: number) => (
                         <span
-                          key={index}
+                          key={i}
                           className={`px-3 py-1 rounded-full text-sm ${
                             theme === "dark"
                               ? "bg-emerald-500/20 text-emerald-400"
@@ -324,35 +307,25 @@ function App() {
                         >
                           {tag.trim()}
                         </span>
-                      )
+                      ))}
+                    </div>
+                    {project.live && (
+                      <a
+                        href={project.live}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-2 transition-colors ${
+                          theme === "dark"
+                            ? "text-emerald-400 hover:text-emerald-300"
+                            : "text-emerald-600 hover:text-emerald-700"
+                        }`}
+                      >
+                        View Project <ExternalLink size={16} />
+                      </a>
                     )}
                   </div>
-                  <a
-                    href={projectsData[activeProject].live}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex items-center gap-2 transition-colors ${
-                      theme === "dark"
-                        ? "text-emerald-400 hover:text-emerald-300"
-                        : "text-emerald-600 hover:text-emerald-700"
-                    }`}
-                  >
-                    View Project <ExternalLink size={16} />
-                  </a>
                 </div>
-              </div>
-
-              <button
-                onClick={nextProject}
-                className={`w-full p-2 mt-4 rounded-lg transition-colors ${
-                  theme === "dark"
-                    ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
-                    : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
-                }`}
-                aria-label="Next project"
-              >
-                <ChevronDown size={24} className="mx-auto" />
-              </button>
+              ))}
             </div>
           ) : (
             <div className="text-center p-8 rounded-lg bg-opacity-20 max-w-md mx-auto">
