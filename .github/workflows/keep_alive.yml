@@ -9,9 +9,22 @@ on:
 jobs:
   ping_supabase:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Send Request to Supabase
         run: |
           curl -i -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/projects?select=*" \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+
+      - name: Keep repository active
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          echo "Last keep-alive run: $(date -u)" > .keep_alive
+          git add .keep_alive
+          git diff-index --quiet HEAD || { git commit -m "chore: keep repository active [skip ci]" && git push; }
